@@ -1034,5 +1034,10 @@ Se não houver dados suficientes para uma seção, omita a seção completamente
 
         return {'valid': True, 'message': 'Dados válidos'}
 
+    def _generate_basic_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """REMOVIDO - Sistema não aceita fallbacks simulados"""
+        
+        raise Exception("FALLBACKS SIMULADOS REMOVIDOS: Configure todas as APIs para análise real.")
+
 # Instância global
 ultra_detailed_analysis_engine = UltraDetailedAnalysisEngine()
