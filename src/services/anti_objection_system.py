@@ -566,9 +566,8 @@ RETORNE APENAS JSON VÁLIDO:
         except Exception as e:
             logger.error(f"❌ Erro crítico ao gerar scripts personalizados: {str(e)}")
             salvar_erro("scripts_personalizados", e, contexto=context_data)
-            # CORREÇÃO: Não retorna fallback silencioso
-            logger.error("❌ Sistema anti-objeção falhou — não gerando fallback")
-            return None
+            # NÃO RETORNA FALLBACK - FALHA EXPLICITAMENTE
+            raise Exception(f"SCRIPTS PERSONALIZADOS FALHARAM: {str(e)}")
     
     def _create_basic_counter_attacks(self, context_data: Dict[str, Any]) -> Dict[str, Any]:
         """Cria contra-ataques básicos como fallback"""

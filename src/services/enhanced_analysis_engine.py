@@ -12,90 +12,77 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from services.ai_manager import ai_manager
-from services.production_search_manager import production_search_manager
-from services.content_extractor import content_extractor
-from services.ultra_detailed_analysis_engine import ultra_detailed_analysis_engine
+from services.advanced_search_orchestrator import advanced_search_orchestrator
+from services.content_synthesis_engine import content_synthesis_engine
+from services.enhanced_analysis_pipeline import enhanced_analysis_pipeline
 from services.mental_drivers_architect import mental_drivers_architect
 from services.future_prediction_engine import future_prediction_engine
+from services.quality_assurance_manager import quality_assurance_manager
 
 logger = logging.getLogger(__name__)
 
 class EnhancedAnalysisEngine:
-    """Motor de análise avançado com integração de múltiplos sistemas"""
+    """Motor de análise avançado aprimorado com pipeline inteligente"""
     
     def __init__(self):
         """Inicializa o motor de análise"""
-        self.max_analysis_time = 1800  # 30 minutos
-        self.systems_enabled = {
-            'ai_manager': bool(ai_manager),
-            'search_manager': bool(production_search_manager),
-            'content_extractor': bool(content_extractor)
+        self.max_analysis_time = 2400  # 40 minutos
+        self.quality_requirements = {
+            'min_sources': 5,
+            'min_content_length': 10000,
+            'min_quality_score': 70.0,
+            'zero_simulation_tolerance': True
         }
         
-        logger.info(f"Enhanced Analysis Engine inicializado - Sistemas: {self.systems_enabled}")
+        logger.info("Enhanced Analysis Engine v2.0 inicializado")
     
-    def generate_comprehensive_analysis(
+    def generate_complete_analysis(
         self, 
         data: Dict[str, Any],
         session_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Gera análise abrangente usando todos os sistemas disponíveis"""
+        """Gera análise completa usando pipeline aprimorado"""
         
         start_time = time.time()
-        logger.info(f"🚀 Iniciando análise abrangente para {data.get('segmento')}")
+        logger.info(f"🚀 Iniciando análise completa aprimorada para {data.get('segmento')}")
         
         try:
-            # FASE 1: Coleta de dados
-            logger.info("📊 FASE 1: Coleta de dados...")
-            
-            # Usa o motor ultra-detalhado para análise GIGANTE
-            logger.info("🚀 Ativando motor de análise GIGANTE...")
-            gigantic_analysis = ultra_detailed_analysis_engine.generate_gigantic_analysis(data, session_id)
-            
-            # Adiciona drivers mentais customizados
-            logger.info("🧠 Gerando drivers mentais customizados...")
-            if gigantic_analysis.get("avatar_ultra_detalhado"):
-                mental_drivers = mental_drivers_architect.generate_complete_drivers_system(
-                    gigantic_analysis["avatar_ultra_detalhado"], 
-                    data
-                )
-                gigantic_analysis["drivers_mentais_sistema_completo"] = mental_drivers
-            
-            # Adiciona predições do futuro
-            logger.info("🔮 Gerando predições do futuro...")
-            future_predictions = future_prediction_engine.predict_market_future(
-                data.get("segmento", "negócios"), 
-                data, 
-                horizon_months=60
+            # Usa o pipeline aprimorado
+            analysis_result = enhanced_analysis_pipeline.execute_complete_analysis(
+                data, session_id
             )
-            gigantic_analysis["predicoes_futuro_completas"] = future_predictions
+            
+            # Valida qualidade
+            quality_validation = quality_assurance_manager.validate_complete_analysis(analysis_result)
+            
+            if not quality_validation['valid']:
+                raise Exception(f"Análise rejeitada por qualidade: {quality_validation['errors']}")
+            
+            # Remove dados brutos
+            clean_analysis = quality_assurance_manager.filter_raw_data_comprehensive(analysis_result)
             
             end_time = time.time()
             processing_time = end_time - start_time
             
             # Adiciona metadados
-            gigantic_analysis["metadata"] = {
+            clean_analysis["metadata"] = {
                 "processing_time_seconds": processing_time,
                 "processing_time_formatted": f"{int(processing_time // 60)}m {int(processing_time % 60)}s",
-                "analysis_engine": "ARQV30 Enhanced v2.0 - GIGANTE MODE",
+                "analysis_engine": "ARQV30 Enhanced v2.0 - COMPLETE MODE",
                 "generated_at": datetime.utcnow().isoformat(),
-                "quality_score": 99.7,
-                "report_type": "GIGANTE_ULTRA_DETALHADO",
-                "prediction_accuracy": 0.95,
-                "completeness_level": "MAXIMUM",
-                "data_sources_used": gigantic_analysis.get("pesquisa_web_massiva", {}).get("total_resultados", 0),
-                "ai_models_used": 3,  # AI Manager + Mental Drivers + Future Prediction
-                "drivers_mentais_incluidos": len(gigantic_analysis.get("drivers_mentais_customizados", [])),
-                "predicoes_futuro_incluidas": True,
-                "arsenal_completo_incluido": True
+                "quality_score": quality_validation.get('quality_score', 0),
+                "report_type": "COMPLETE_ENHANCED",
+                "simulation_free": True,
+                "raw_data_filtered": True,
+                "pipeline_version": "2.0_enhanced"
             }
             
-            logger.info(f"✅ Análise abrangente concluída em {processing_time:.2f} segundos")
-            return gigantic_analysis
+            logger.info(f"✅ Análise completa concluída em {processing_time:.2f} segundos")
+            return clean_analysis
             
         except Exception as e:
-            logger.error(f"❌ Erro na análise abrangente: {str(e)}", exc_info=True)
-            return self._generate_fallback_analysis(data, str(e))
+            logger.error(f"❌ Erro na análise completa: {str(e)}", exc_info=True)
+            raise Exception(f"ANÁLISE COMPLETA FALHOU: {str(e)}")
     
     def _collect_comprehensive_data(
         self, 

@@ -754,19 +754,19 @@ def generate_pdf():
                 'message': 'Envie os dados da análise no corpo da requisição'
             }), 400
         
-        # Valida qualidade antes de gerar PDF
-        from services.analysis_quality_controller import analysis_quality_controller
+        # Valida qualidade com garantia de qualidade
+        from services.quality_assurance_manager import quality_assurance_manager
         
-        can_generate, reason = analysis_quality_controller.should_generate_pdf(data)
+        can_generate, reason = quality_assurance_manager.should_generate_pdf(data)
         if not can_generate:
             return jsonify({
-                'error': 'Qualidade insuficiente para PDF',
+                'error': 'PDF rejeitado por qualidade',
                 'message': reason,
-                'recommendation': 'Execute nova análise com APIs configuradas corretamente'
+                'recommendation': 'Configure APIs e execute nova análise'
             }), 422
         
-        # Limpa dados antes de gerar PDF
-        cleaned_data = analysis_quality_controller.clean_analysis_for_output(data)
+        # Remove dados brutos antes de gerar PDF
+        cleaned_data = quality_assurance_manager.filter_raw_data_comprehensive(data)
         
         # Gera PDF
         logger.info("Gerando relatório PDF...")

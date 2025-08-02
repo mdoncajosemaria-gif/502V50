@@ -117,9 +117,8 @@ class VisualProofsGenerator:
             
             if not visual_proofs:
                 logger.error("❌ Nenhuma prova visual gerada")
-                # Usa provas padrão em vez de falhar
-                logger.warning("🔄 Usando provas visuais padrão")
-                visual_proofs = self._get_default_visual_proofs(context_data)
+                # NÃO USA FALLBACK - FALHA EXPLICITAMENTE
+                raise Exception("NENHUMA PROVA VISUAL VÁLIDA GERADA")
             
             # Salva provas visuais finais
             salvar_etapa("provas_finais", visual_proofs, categoria="provas_visuais")
@@ -131,9 +130,8 @@ class VisualProofsGenerator:
             logger.error(f"❌ Erro ao gerar provas visuais: {str(e)}")
             salvar_erro("provas_sistema", e, contexto={"segmento": context_data.get('segmento')})
             
-            # Fallback para provas básicas
-            logger.warning("🔄 Gerando provas visuais básicas como fallback...")
-            return self._get_default_visual_proofs(context_data)
+            # NÃO GERA FALLBACK - FALHA EXPLICITAMENTE
+            raise Exception(f"PROVAS VISUAIS FALHARAM: {str(e)}")
     
     def _prioritize_concepts(self, concepts: List[str], avatar_data: Dict[str, Any]) -> List[str]:
         """Prioriza conceitos baseado no avatar"""

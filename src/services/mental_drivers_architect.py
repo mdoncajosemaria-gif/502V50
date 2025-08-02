@@ -234,7 +234,8 @@ RETORNE APENAS JSON VÁLIDO:
             
         except Exception as e:
             logger.error(f"❌ Erro ao gerar drivers customizados: {str(e)}")
-            return self._create_basic_drivers(context_data)
+            # NÃO RETORNA FALLBACK - FALHA EXPLICITAMENTE
+            raise Exception(f"DRIVERS CUSTOMIZADOS FALHARAM: {str(e)}")
     
     def _create_basic_drivers(self, context_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Cria drivers básicos como fallback"""

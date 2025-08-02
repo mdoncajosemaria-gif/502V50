@@ -215,7 +215,7 @@ class CorrectedUltraDetailedAnalysisEngine:
             salvar_erro("analise_gigante_falha_critica", e, contexto=data)
             
             # NÃO GERA FALLBACK - FALHA EXPLICITAMENTE
-            raise Exception(f"ANÁLISE FALHOU COMPLETAMENTE: {str(e)}. Sistema não aceita dados de baixa qualidade. Configure todas as APIs e execute novamente.")
+            raise Exception(f"ANÁLISE ULTRA-DETALHADA FALHOU: {str(e)}. Configure todas as APIs e execute novamente.")
     
     def _validate_input_data_strict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Validação rigorosa dos dados de entrada"""

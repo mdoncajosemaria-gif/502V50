@@ -11,13 +11,10 @@ import time
 import json
 from datetime import datetime
 from flask import Blueprint, request, jsonify, session
-from services.enhanced_analysis_engine import enhanced_analysis_engine
-from services.corrected_ultra_detailed_analysis_engine import corrected_ultra_detailed_analysis_engine
+from services.enhanced_analysis_pipeline import enhanced_analysis_pipeline
+from services.quality_assurance_manager import quality_assurance_manager
 from services.ai_manager import ai_manager
 from services.production_search_manager import production_search_manager
-from services.safe_extract_content import safe_content_extractor
-from services.analysis_quality_controller import analysis_quality_controller
-from services.content_quality_validator import content_quality_validator
 from services.attachment_service import attachment_service
 from database import db_manager
 from routes.progress import get_progress_tracker, update_analysis_progress
@@ -34,7 +31,7 @@ def analyze_market():
     
     try:
         start_time = time.time()
-        logger.info("🚀 Iniciando análise de mercado ultra-detalhada")
+        logger.info("🚀 Iniciando análise de mercado aprimorada")
         
         # Coleta dados da requisição
         data = request.get_json()
@@ -97,10 +94,10 @@ def analyze_market():
         # Salva query preparada
         salvar_etapa("query_preparada", {"query": data['query']}, categoria="pesquisa_web")
         
-        # Executa análise GIGANTE ultra-detalhada
-        logger.info("🚀 Executando análise GIGANTE ultra-detalhada...")
+        # Executa análise aprimorada com pipeline
+        logger.info("🚀 Executando análise aprimorada...")
         try:
-            analysis_result = corrected_ultra_detailed_analysis_engine.generate_corrected_gigantic_analysis(
+            analysis_result = enhanced_analysis_pipeline.execute_complete_analysis(
                 data,
                 session_id=session_id,
                 progress_callback=progress_callback
@@ -109,72 +106,67 @@ def analyze_market():
             # Salva resultado da análise imediatamente
             salvar_etapa("analise_resultado", analysis_result, categoria="analise_completa")
             
-            # VALIDAÇÃO RIGOROSA DO RESULTADO
-            logger.info("🔍 Validando qualidade da análise...")
-            quality_validation = analysis_quality_controller.validate_complete_analysis(analysis_result)
+            # Validação de qualidade ultra-rigorosa
+            logger.info("🔍 Executando garantia de qualidade...")
+            quality_validation = quality_assurance_manager.validate_complete_analysis(analysis_result)
             
             # Salva validação
             salvar_etapa("validacao_qualidade", quality_validation, categoria="analise_completa")
             
             if not quality_validation['valid']:
-                logger.error(f"❌ Análise rejeitada por baixa qualidade: {quality_validation['errors']}")
+                logger.error(f"❌ Análise rejeitada: {quality_validation['errors']}")
                 salvar_erro("validacao_falha", Exception("Análise rejeitada por baixa qualidade"), contexto=quality_validation)
                 
-                # Mesmo rejeitada, tenta salvar dados parciais
-                try:
-                    dados_parciais = auto_save_manager.consolidar_sessao(session_id)
-                    logger.info(f"💾 Dados parciais salvos: {dados_parciais}")
-                except Exception as save_error:
-                    logger.error(f"❌ Erro ao salvar dados parciais: {save_error}")
+                # Consolida dados parciais
+                dados_parciais = auto_save_manager.consolidar_sessao(session_id)
                 
                 return jsonify({
                     'error': 'Análise de baixa qualidade rejeitada',
-                    'message': 'A análise gerada não atende aos critérios de qualidade',
+                    'message': 'Análise não atende critérios de qualidade ultra-rigorosos',
                     'quality_report': quality_validation,
                     'recommendations': quality_validation['recommendations'],
-                    'timestamp': datetime.now().isoformat(),
-                    'dados_parciais_salvos': True,
-                    'session_id': session_id
+                    'dados_parciais': dados_parciais,
+                    'session_id': session_id,
+                    'timestamp': datetime.now().isoformat()
                 }), 422
             
-            # Limpa análise removendo componentes inválidos
-            analysis_result = analysis_quality_controller.clean_analysis_for_output(analysis_result)
+            # Remove dados brutos do relatório final
+            clean_analysis = quality_assurance_manager.filter_raw_data_comprehensive(analysis_result)
             
             # Salva análise limpa
-            salvar_etapa("analise_limpa", analysis_result, categoria="analise_completa")
+            salvar_etapa("analise_limpa", clean_analysis, categoria="analise_completa")
             
             logger.info(f"✅ Análise validada com score {quality_validation['quality_score']:.1f}%")
             
         except Exception as e:
-            logger.error(f"❌ Análise GIGANTE falhou: {str(e)}")
-            salvar_erro("analise_gigante", e, contexto=data)
+            logger.error(f"❌ Pipeline de análise falhou: {str(e)}")
+            salvar_erro("pipeline_analise", e, contexto=data)
             
-            # Tenta recuperar dados salvos automaticamente
+            # Recupera dados salvos automaticamente
             try:
                 dados_recuperados = auto_save_manager.consolidar_sessao(session_id)
                 logger.info(f"🔄 Dados recuperados automaticamente: {dados_recuperados}")
                 
                 return jsonify({
-                    'error': 'Falha na análise principal',
+                    'error': 'Pipeline falhou mas dados preservados',
                     'message': str(e),
-                    'dados_recuperados': True,
+                    'dados_preservados': True,
                     'session_id': session_id,
                     'relatorio_parcial': dados_recuperados,
                     'timestamp': datetime.now().isoformat(),
-                    'recommendation': 'Dados intermediários foram preservados e podem ser acessados'
+                    'recommendation': 'Dados preservados - configure APIs e tente novamente'
                 }), 206  # Partial Content
                 
             except Exception as recovery_error:
                 logger.error(f"❌ Falha na recuperação automática: {recovery_error}")
             
-            # NÃO GERA FALLBACK - FALHA EXPLICITAMENTE
             return jsonify({
-                'error': 'Falha na análise',
+                'error': 'Falha crítica na análise',
                 'message': str(e),
                 'timestamp': datetime.now().isoformat(),
-                'recommendation': 'Configure todas as APIs necessárias e tente novamente',
+                'recommendation': 'Configure APIs e execute novamente',
                 'session_id': session_id,
-                'dados_preservados': 'Verifique diretório relatorios_intermediarios',
+                'dados_preservados': f'Verifique relatorios_intermediarios/{session_id}',
                 'debug_info': {
                     'input_data': {
                         'segmento': data.get('segmento'),
@@ -187,20 +179,15 @@ def analyze_market():
             }), 500
         
         # Verifica se a análise foi bem-sucedida
-        if not analysis_result or not isinstance(analysis_result, dict):
-            logger.error("❌ Análise retornou resultado inválido ou vazio")
-            salvar_erro("resultado_invalido", Exception("Resultado inválido"), contexto={"result_type": type(analysis_result)})
+        if not clean_analysis or not isinstance(clean_analysis, dict):
+            logger.error("❌ Análise limpa inválida")
+            salvar_erro("analise_limpa_invalida", Exception("Análise limpa inválida"))
             return jsonify({
-                'error': 'Análise retornou resultado inválido',
-                'message': 'Sistema não conseguiu gerar análise válida',
+                'error': 'Análise final inválida',
+                'message': 'Falha na limpeza da análise',
                 'timestamp': datetime.now().isoformat(),
-                'recommendation': 'Verifique configuração das APIs e tente novamente',
                 'session_id': session_id,
-                'debug_info': {
-                    'result_type': type(analysis_result).__name__,
-                    'result_length': len(str(analysis_result)) if analysis_result else 0,
-                    'ai_status': ai_manager.get_provider_status()
-                }
+                'recommendation': 'Verifique logs e tente novamente'
             }), 500
         
         # Marca progresso como completo
@@ -222,17 +209,17 @@ def analyze_market():
                 'query': data.get('query'),
                 'status': 'completed',
                 'session_id': session_id,
-                **analysis_result  # Inclui toda a análise
+                **clean_analysis  # Inclui análise limpa
             })
             
             if db_record:
                 if db_record.get('local_only'):
-                    analysis_result['local_only'] = True
-                    analysis_result['local_files'] = db_record.get('local_files')
+                    clean_analysis['local_only'] = True
+                    clean_analysis['local_files'] = db_record.get('local_files')
                     logger.info(f"✅ Análise salva localmente: {len(db_record['local_files']['files'])} arquivos")
                 else:
-                    analysis_result['database_id'] = db_record['id']
-                    analysis_result['local_files'] = db_record.get('local_files')
+                    clean_analysis['database_id'] = db_record['id']
+                    clean_analysis['local_files'] = db_record.get('local_files')
                     logger.info(f"✅ Análise salva: Supabase ID {db_record['id']} + arquivos locais")
                 
                 # Salva confirmação do banco
@@ -243,17 +230,15 @@ def analyze_market():
             else:
                 logger.warning("⚠️ Falha ao salvar análise")
                 salvar_erro("banco_falha", Exception("Falha ao salvar no banco"))
-                
-        except Exception as e:
+                clean_analysis['database_warning'] = "Falha ao salvar no banco"
             logger.error(f"❌ Erro ao salvar no banco: {str(e)}")
             salvar_erro("banco_erro", e)
-            # Não falha a análise por erro no banco
-            analysis_result['database_warning'] = f"Falha ao salvar: {str(e)}"
+            clean_analysis['database_warning'] = f"Erro no banco: {str(e)}"
         
         # Consolida sessão final
         try:
             relatorio_consolidado = auto_save_manager.consolidar_sessao(session_id)
-            analysis_result['relatorio_consolidado'] = relatorio_consolidado
+            clean_analysis['relatorio_consolidado'] = relatorio_consolidado
             logger.info(f"📋 Relatório consolidado gerado: {relatorio_consolidado}")
         except Exception as e:
             logger.error(f"❌ Erro ao consolidar sessão: {e}")
@@ -263,32 +248,32 @@ def analyze_market():
         processing_time = end_time - start_time
         
         # Adiciona metadados finais
-        if 'metadata' not in analysis_result:
-            analysis_result['metadata'] = {}
+        if 'metadata' not in clean_analysis:
+            clean_analysis['metadata'] = {}
         
-        analysis_result['metadata'].update({
+        clean_analysis['metadata'].update({
             'processing_time_seconds': processing_time,
             'processing_time_formatted': f"{int(processing_time // 60)}m {int(processing_time % 60)}s",
             'request_timestamp': datetime.now().isoformat(),
             'session_id': data.get('session_id'),
-            'salvamento_automatico': True,
-            'dados_preservados': True,
-            'isolamento_falhas': True,
+            'pipeline_version': '2.0_enhanced',
+            'quality_assured': True,
+            'raw_data_filtered': True,
+            'simulation_free': True,
             'input_data': {
                 'segmento': data.get('segmento'),
                 'produto': data.get('produto'),
                 'query': data.get('query')
             },
-            'quality_validated': True,
-            'simulation_free': True
+            'quality_score': quality_validation.get('quality_score', 0)
         })
         
         # Salva resposta final
-        salvar_etapa("resposta_final", analysis_result, categoria="analise_completa")
+        salvar_etapa("resposta_final", clean_analysis, categoria="analise_completa")
         
         logger.info(f"✅ Análise concluída em {processing_time:.2f} segundos")
         
-        return jsonify(analysis_result)
+        return jsonify(clean_analysis)
         
     except Exception as e:
         logger.error(f"❌ Erro crítico na análise: {str(e)}", exc_info=True)
@@ -304,14 +289,12 @@ def analyze_market():
             'error': 'Erro na análise',
             'message': str(e),
             'timestamp': datetime.now().isoformat(),
-            'fallback_available': False,
             'recommendation': 'Configure todas as APIs necessárias antes de tentar novamente',
+            'session_id': locals().get('session_id', 'unknown'),
             'debug_info': {
-                'session_id': locals().get('session_id', 'unknown'),
                 'input_data': {
-                    'segmento': data.get('segmento'),
-                    'produto': data.get('produto'),
-                    'query': data.get('query')
+                    'segmento': data.get('segmento') if 'data' in locals() else 'unknown',
+                    'produto': data.get('produto') if 'data' in locals() else 'unknown'
                 },
                 'ai_status': ai_manager.get_provider_status(),
                 'search_status': production_search_manager.get_provider_status()
